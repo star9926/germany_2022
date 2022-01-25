@@ -1,0 +1,71 @@
+library(devtools)
+devtools::install_github("AndreaCirilloAC/updateR")
+library(updateR)
+updateR(admin_password = '用户系统密码')
+
+#11,01,2022 distinguish ligands & receptors from isoforms and species on combining isoforms 
+#using distinct two colors for the two species
+#Q1: how to combine isoforms
+#manually combined
+
+#Q2: how to use two colors
+
+library(ggtree)
+library(treeio)
+library(ggplot2)
+tree=read.fasta('all_id_r_H+Mcds.fa')
+p=ggtree(tree,branch.length = 'none')
+p=ggtree(tree,branch.length = 'none')
+print(p)
+
+p=ggtree(ape::as.phylo(clust),layout = 'circular',
+         branch.length = 'none')
+
+print(p)
+
+p1=p+geom_tiplab2()
+print(p1)
+
+p2=p1+geom_strip(14,15,barsize = 3,offset = 7,
+                 offset.text = 1,angle = 1,
+                 fontsize = 4,
+                 hjust = 'center',extend = .3)
+print(p2)
+
+#try new way
+clust$labels=substring(clust$labels,1,5)
+clus=cutree(clust,6)
+#clust[!duplicated(clust$labels),]
+d=data.frame(label=names(clus),member=factor(clus))
+
+#substring(names(clus),1,5)
+
+
+ggtree(ape::as.phylo(clust),linetype='dashed',color='#487AA1') %<+% d +
+  layout_dendrogram() +
+  geom_tiplab(aes(color=member),angle=90,hjust=1) +
+  theme_dendrogram(plot.margin=margin(6,6,80,6))
+
+ggtree(ape::as.phylo(clust),linetype='dashed',color='#487AA1') %<+% d +
+  layout_rectangular()  +
+  geom_tiplab(aes(color=member),angle=0,hjust=.6)
+library(Biostrings)
+#BiocManager::install('ape')
+library(ape)
+## merge
+## fasta import & auto-masking
+merge_8 <- readDNAStringSet("all_id_r_H+Mcds.fa", 
+                           format="fasta",
+                           nrec=-1L, 
+                           skip=0L, 
+                           seek.first.rec=FALSE, 
+                           use.names=TRUE)
+
+aln <- muscle::muscle(merge_8)
+auto <- maskGaps(aln, min.fraction=0.5, min.block.width=4)
+## get the tree!
+sdist <- stringDist(as(auto,"AAStringSet"), method="hamming")
+clust <- stats::hclust(sdist, method = "single")
+png(paste0('H+M_CXCRcds_tree', '.png'),res = 150,width = 1560,height = 1560)
+plot(ape::as.phylo(clust),type="fan",cex = 1.0,main="H+M CXCR Gene Group Pylogenetic Tree")
+dev.off()
