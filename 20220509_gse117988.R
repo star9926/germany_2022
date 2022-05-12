@@ -201,10 +201,87 @@ tumor<-CreateSeuratObject(datatumor,
                           project = '10x_tumor')
 tumor
 
+#
+tumor<-AddMetaData(tumor,
+                   metadata = apply(raw_datatumor,2,sum),
+                   col.name = 'nUMI_raw')
+tumor<-AddMetaData(tumor,
+                   metadata = celltype,col.name = 'celltype')
+
+#
+tumor <- ScaleData(tumor,vars.to.regress = c('nUMI_raw'),
+                   model.use = 'linear',
+                   use.umi = F)
+
+tumor <- FindVariableFeatures(tumor,mean.function = ExpMean,
+                              dispersion.function = LogVMR,
+                              mean.cutoff = c(0.0125,3),
+                              dispersion.cutoff = c(0.5,Inf))
+
+tumor <- RunPCA(tumor,
+                pc.genes=tumor@var.genes)
+
+tumor <- RunUMAP(tumor,
+                 reduction = 'pca',
+                 dims = 1:50)
+
+#or 
+tumor <- RunTSNE(tumor,
+                 dims.use=1:10,
+                 perplexity=25)
+
+tumor <- FindNeighbors(tumor,
+                       reduction='pca',
+                       dims = 1:10,
+                       k.param = 35)
+
+tumor <- FindClusters(tumor,
+                      resolution = 0.9,
+                      verbose = F)
+
+save(tumor,file = 'patient1.tumor.output.Rdata')
+
+load('patient1.Tumor.output.Rdata')
+
+#count_matrix <- tumor@data
+
+count_matrix <- tumor@assays$RNA@counts
+count_matrix[1:4,1:4]
+
+cluster <- tumor@meta.data$celltype
+table(cluster)
+
+allgenes <- row.names(count_matrix)
+allgenes[grep('HLA',allgenes)]
+
+FeaturePlot(tumor,
+            features = 'HLA-A',
+            cols = c('grey','blue'),
+            reduction = 'umap')
+
+table(count_matrix['HLA-A',]>0,cluster)
+
+FeaturePlot(tumor,
+            features = 'HLA-B',
+            cols = c('grey','blue'),
+            reduction = 'umap')
+table(count_matrix['HLA-B',]>0,cluster)
 
 
+chisq.test(table(count_matrix['HLA-A',]>0,cluster))
+chisq.test(table(count_matrix['HLA-B',]>0,cluster))
+
+HLA_genes <- allgenes[grep('HLA',allgenes)]
+
+HLA_result <- c()
 
 
+for (gene in HLA_genes) {
+  tmp <- chisq.test(table(count_matrix[gene,]>0, cluster))
+  if (tmp$p.value<0.01) {
+    HLA_result[gene] <- gene
+  }
+}
 
-
-
+names(HLA_result)
+length(HLA_result)
